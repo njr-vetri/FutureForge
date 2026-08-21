@@ -184,4 +184,4 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
       </div>
     </header>
   );
-
+};
