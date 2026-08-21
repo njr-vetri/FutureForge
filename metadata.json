@@ -1,0 +1,6 @@
+{
+  "name": "CareerOS",
+  "description": "AI-powered student placement platform with Trailhead (expedition journey) and Crucible (forge test) tracks.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
