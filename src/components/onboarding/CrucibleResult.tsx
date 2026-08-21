@@ -3,7 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { Flame, ArrowRight, CheckCircle2, Code2, BrainCircuit, Target, Laptop } from 'lucide-react';
 
 export const CrucibleResult: React.FC = () => {
-  const { setTrack, setHasCompletedAssessment } = useApp();
+  const { setTrack, setHasCompletedAssessment, navigate } = useApp();
   const [data, setData] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
@@ -20,6 +20,8 @@ export const CrucibleResult: React.FC = () => {
   const handleEnterCrucible = () => {
     setHasCompletedAssessment(true);
     setTrack('crucible');
+    // Explicitly navigate — setTrack skips navigation when already on a /crucible-* route
+    navigate('/crucible/workflow');
   };
 
   const getLabel = (id: string, defaultVal: string) => {
