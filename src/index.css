@@ -1,0 +1,99 @@
+﻿@import "tailwindcss";
+
+@layer base {
+  :root {
+    --ink: #14231E;
+    --ink-muted: #64748B;
+    --parchment: #F7F8F5;
+    --parchment-light: #FFFFFF;
+    --parchment-card: #FFFFFF;
+    --parchment-border: #E2E8F0;
+    
+    /* Trailhead Professional Tokens */
+    --pine: #14231E;
+    --pine-deep: #020617;
+    --pine-light: #DDE4DE;
+    --compass-gold: #1F5E4D;
+    --compass-gold-hover: #1D4ED8;
+    --signal-blue: #0284C7;
+    --signal-emerald: #10B981;
+    --alert-coral: #EF4444;
+
+    /* Crucible Professional Tokens */
+    --charcoal: #14231E;
+    --charcoal-deep: #05070D;
+    --charcoal-card: #FFFFFF;
+    --ember: #B8872F;
+    --ember-dark: #EA580C;
+    --steel: #DDE4DE;
+    --steel-light: #334155;
+    --spark-gold: #B8872F;
+  }
+
+  body {
+    font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+    color: var(--ink);
+    background-color: var(--parchment);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Spectral', Georgia, serif;
+  }
+
+  code, pre, .font-mono, .data-plex {
+    font-family: 'IBM Plex Mono', monospace;
+  }
+}
+
+/* Subtle Focus Glow Animation - Professional Look */
+@keyframes softGlowPulse {
+  0%, 100% {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border-color: #DDE4DE;
+  }
+  50% {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-color: #B8872F;
+  }
+}
+
+.live-ember-glow {
+  animation: softGlowPulse 2.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-ember-glow {
+    animation: none;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border-color: #DDE4DE;
+  }
+}
+
+/* Custom professional scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.04);
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+.crucible-theme ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+}
+.crucible-theme ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.crucible-theme ::-webkit-scrollbar-thumb:hover {
+  background: #B8872F;
+}
+
+
