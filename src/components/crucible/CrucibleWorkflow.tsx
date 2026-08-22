@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   Flame,
@@ -36,18 +36,8 @@ export const CrucibleWorkflow: React.FC = () => {
   // Phase B IDE State
   const [language, setLanguage] = useState<'python' | 'cpp' | 'typescript'>('python');
   const [code, setCode] = useState<string>(`def solve_concurrency_race(stream: list[int], max_lag_ms: int) -> int:
-    # Maintain rolling monotonic deque of unacknowledged transaction timestamps
-    from collections import deque
-    pending = deque()
-    max_active_lag = 0
-    
-    for timestamp in stream:
-        while pending and timestamp - pending[0] > max_lag_ms:
-            pending.popleft()
-        pending.append(timestamp)
-        max_active_lag = max(max_active_lag, len(pending))
-        
-    return max_active_lag`);
+    # Write your optimized solution here
+    pass`);
   const [isRunningTests, setIsRunningTests] = useState<boolean>(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [testSuitePassed, setTestSuitePassed] = useState<boolean>(false);
@@ -100,41 +90,86 @@ export const CrucibleWorkflow: React.FC = () => {
   }, [isRecording]);
 
   // Phase A Submission Handler
-  const handleSolvePhaseA = () => {
+  const handleSolvePhaseA = async () => {
     setIsEvaluatingPhaseA(true);
     setActiveEmberPanel('problem');
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/crucible/workflow/${profile.id}/logic`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: profile.id || '11111111-1111-1111-1111-111111111111',
+          notes: candidateNotes,
+          complexity: selectedComplexity,
+          problemTitle: 'Concurrency Race Window',
+        })
+      });
+      const data = await res.json();
       setIsEvaluatingPhaseA(false);
-      setPhaseASolved(true);
-      setPhaseBUnlocked(true);
-      setActiveEmberPanel('editor');
-      showToast('Phase A Verified: Algorithmic Logic approved. Phase B (IDE) Unlocked below.');
-      setTimeout(() => {
-        phaseBRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 150);
-    }, 1200);
+      
+      if (data.passed) {
+        setPhaseASolved(true);
+        setPhaseBUnlocked(true);
+        setActiveEmberPanel('editor');
+        showToast('Phase A Verified: ' + (data.critique || 'Logic approved. Phase B unlocked.'));
+        setTimeout(() => {
+          phaseBRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
+      } else {
+        showToast('Phase A Revision Required: ' + (data.critique || 'Please refine your logic.'));
+        setActiveEmberPanel('none');
+      }
+    } catch (e) {
+      setIsEvaluatingPhaseA(false);
+      showToast('Error evaluating logic. Please try again.');
+    }
   };
 
   // Phase B Test Execution Handler
-  const handleRunCode = () => {
+  const handleRunCode = async () => {
     setIsRunningTests(true);
     setActiveEmberPanel('editor');
     setTestOutput(null);
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`/api/crucible/workflow/${profile.id}/code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: profile.id || '11111111-1111-1111-1111-111111111111',
+          language,
+          code,
+          input: 'stream',
+        })
+      });
+      const data = await res.json();
       setIsRunningTests(false);
-      setTestSuitePassed(true);
-      setPhaseBSolved(true);
-      setPhaseCUnlocked(true);
-      setActiveEmberPanel('mic');
-      setTestOutput(
-        `[CRUCIBLE TEST RUNNER]\nâœ“ Test Case 1 (10,000 bursts stream): PASSED (14ms, 1.2MB)\nâœ“ Test Case 2 (Out-of-order latency spikes): PASSED (19ms, 1.4MB)\nâœ“ Test Case 3 (Zero-allocation monotonic boundary): PASSED (8ms, 0.9MB)\n\nExecution Time: 41ms | Memory: 3.5MB | All 3/3 Test Suites Green.`
-      );
-      showToast('All Test Suites Passed! Phase C (60s Spoken Defense) Unlocked below.');
-      setTimeout(() => {
-        phaseCRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 200);
-    }, 1500);
+      
+      const out = [
+        '[CRUCIBLE TEST RUNNER]',
+        data.stdout ? `STDOUT:\n${data.stdout}` : '',
+        data.stderr ? `STDERR:\n${data.stderr}` : '',
+        `Verdict: ${data.verdict}`
+      ].filter(Boolean).join('\n\n');
+      
+      setTestOutput(out);
+
+      if (data.verdict === 'PASS') {
+        setTestSuitePassed(true);
+        setPhaseBSolved(true);
+        setPhaseCUnlocked(true);
+        setActiveEmberPanel('mic');
+        showToast('All Test Suites Passed! Phase C Unlocked below.');
+        setTimeout(() => {
+          phaseCRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 200);
+      } else {
+        showToast('Test execution failed. Check output console.');
+      }
+    } catch (e) {
+      setIsRunningTests(false);
+      showToast('Error running code. Please try again.');
+    }
   };
 
   // Phase C Recording Handlers
@@ -145,34 +180,53 @@ export const CrucibleWorkflow: React.FC = () => {
     setDefenseVerdict(null);
   };
 
-  const handleStopRecording = () => {
+  const handleStopRecording = async () => {
     setIsRecording(false);
     setIsAnalyzingAudio(true);
     setActiveEmberPanel('chat');
-    setTranscript(
-      "To prevent event loop starvation under high burst rates, I leveraged a monotonic double-ended queue. The sliding window evicts expired timestamps in amortized O(1) time without auxiliary heap allocations. This guarantees bounded memory usage even when upstream producers exceed 50,000 transactions per second."
-    );
 
-    setTimeout(() => {
-      setIsAnalyzingAudio(false);
-      setPhaseCSolved(true);
-      setActiveEmberPanel('none');
-      setDefenseVerdict({
-        score: 89,
-        verdict: 'Pass with Distinction Â· High-Pressure Certified',
-        critique:
-          'Sharp, precise articulation of memory bounds and amortized complexity. Addressed event loop starvation immediately without meandering into basic syntax.',
+    try {
+      const res = await fetch(`/api/crucible/workflow/${profile.id}/defense`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: profile.id || '11111111-1111-1111-1111-111111111111',
+          transcript,
+          code,
+          prompt: 'Your tests passed, but explain to me in 60 seconds how your eviction strategy guarantees the Node.js or Go runtime will not stall under 50,000 spikes per second. Defend your trade-offs.',
+        })
       });
-      // Boost readiness score
-      setProfile((prev) => ({
-        ...prev,
-        readinessScore: Math.min(100, prev.readinessScore + 3),
-      }));
-      showToast('Crucible 3-Phase Defense Successfully Passed! Score updated.');
+      const data = await res.json();
+      setIsAnalyzingAudio(false);
+      
+      if (data.completed || data.score >= 70) {
+        setPhaseCSolved(true);
+        setActiveEmberPanel('none');
+        setDefenseVerdict({
+          score: data.score,
+          verdict: data.score >= 90 ? 'Pass with Distinction - High-Pressure Certified' : 'Pass',
+          critique: data.critique,
+        });
+        setProfile((prev) => ({
+          ...prev,
+          readinessScore: Math.min(100, prev.readinessScore + 5),
+        }));
+        showToast('Crucible 3-Phase Defense Successfully Passed! Score updated.');
+      } else {
+        setDefenseVerdict({
+          score: data.score,
+          verdict: 'Needs Practice',
+          critique: data.critique,
+        });
+        showToast('Defense critique received. Try again.');
+      }
       setTimeout(() => {
         verdictRef.current?.scrollIntoView({ behavior: 'smooth' });
       }, 200);
-    }, 2000);
+    } catch (e) {
+      setIsAnalyzingAudio(false);
+      showToast('Error analyzing defense. Please try again.');
+    }
   };
 
   return (
@@ -187,7 +241,7 @@ export const CrucibleWorkflow: React.FC = () => {
                 UNIFIED CRUCIBLE PIPELINE
               </span>
               <span className="text-xs font-mono text-[#EFE9D8]/60">
-                SCROLL-REVEAL Â· 3 PHASES
+                SCROLL-REVEAL - 3 PHASES
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#EFE9D8]">
@@ -207,7 +261,7 @@ export const CrucibleWorkflow: React.FC = () => {
               <span>Phase A</span>
               {phaseASolved && <Check className="w-3 h-3" />}
             </div>
-            <span className="text-[#4A5A63]">â†’</span>
+            <span className="text-[#4A5A63]">→</span>
             <div
               className={`flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded ${
                 phaseBSolved
@@ -220,7 +274,7 @@ export const CrucibleWorkflow: React.FC = () => {
               <span>Phase B</span>
               {phaseBSolved && <Check className="w-3 h-3" />}
             </div>
-            <span className="text-[#4A5A63]">â†’</span>
+            <span className="text-[#4A5A63]">→</span>
             <div
               className={`flex items-center gap-1.5 text-xs font-mono px-2 py-1 rounded ${
                 phaseCSolved
@@ -257,7 +311,7 @@ export const CrucibleWorkflow: React.FC = () => {
             </span>
             <div>
               <span className="text-xs font-mono text-[#E8622C] font-semibold uppercase tracking-wider">
-                PHASE A Â· LOGIC & COMPLEXITY FORMULATION
+                PHASE A - LOGIC & COMPLEXITY FORMULATION
               </span>
               <h2 className="text-xl sm:text-2xl font-display font-bold text-[#EFE9D8]">
                 Distributed Streaming Lag & Monotonic Eviction
@@ -291,18 +345,18 @@ export const CrucibleWorkflow: React.FC = () => {
             <div className="p-3.5 rounded-lg bg-[#211D1B] border border-[#4A5A63]/40">
               <span className="text-[#E8622C] font-semibold block mb-1">CONSTRAINTS</span>
               <ul className="space-y-1 text-[#EFE9D8]/70">
-                <li>â€¢ 1 &le; stream.length &le; 10^6</li>
-                <li>â€¢ Timestamps strictly sorted: stream[i] &le; stream[i+1]</li>
-                <li>â€¢ Zero-allocation runtime strictly mandated</li>
+                <li>- 1 &le; stream.length &le; 10^6</li>
+                <li>- Timestamps strictly sorted: stream[i] &le; stream[i+1]</li>
+                <li>- Zero-allocation runtime strictly mandated</li>
               </ul>
             </div>
 
             <div className="p-3.5 rounded-lg bg-[#211D1B] border border-[#4A5A63]/40">
               <span className="text-[#F2B705] font-semibold block mb-1">ARCHITECTURAL TARGET</span>
               <ul className="space-y-1 text-[#EFE9D8]/70">
-                <li>â€¢ Time: Amortized O(N) linear scan</li>
-                <li>â€¢ Space: O(K) where K is peak concurrent lag</li>
-                <li>â€¢ No event loop blocking garbage-collection sweeps</li>
+                <li>- Time: Amortized O(N) linear scan</li>
+                <li>- Space: O(K) where K is peak concurrent lag</li>
+                <li>- No event loop blocking garbage-collection sweeps</li>
               </ul>
             </div>
           </div>
@@ -390,7 +444,7 @@ export const CrucibleWorkflow: React.FC = () => {
             </span>
             <div>
               <span className="text-xs font-mono text-[#E8622C] font-semibold uppercase tracking-wider">
-                PHASE B Â· PRODUCTION CODE IMPLEMENTATION
+                PHASE B - PRODUCTION CODE IMPLEMENTATION
               </span>
               <h2 className="text-xl sm:text-2xl font-display font-bold text-[#EFE9D8]">
                 Integrated Crucible Test-Runner IDE
@@ -531,7 +585,7 @@ export const CrucibleWorkflow: React.FC = () => {
             </span>
             <div>
               <span className="text-xs font-mono text-[#E8622C] font-semibold uppercase tracking-wider">
-                PHASE C Â· 60-SECOND VERBAL TECHNICAL DEFENSE
+                PHASE C - 60-SECOND VERBAL TECHNICAL DEFENSE
               </span>
               <h2 className="text-xl sm:text-2xl font-display font-bold text-[#EFE9D8]">
                 Cross-Examination & Spoken Articulation
@@ -571,22 +625,31 @@ export const CrucibleWorkflow: React.FC = () => {
 
           {/* Interactive Mic & Waveform Stage */}
           <div className="p-6 rounded-2xl bg-[#0e0c0b] border border-[#4A5A63]/70 flex flex-col items-center justify-center text-center space-y-5">
-            {/* Waveform Visualization */}
-            <div className="flex items-center justify-center gap-1.5 h-16 w-full max-w-md px-4">
-              {waveformBars.map((height, idx) => (
-                <span
-                  key={idx}
-                  style={{ height: `${height}px` }}
-                  className={`w-2 rounded-full transition-all duration-150 ${
-                    isRecording
-                      ? 'bg-[#E8622C]'
-                      : phaseCSolved
-                      ? 'bg-emerald-400/70'
-                      : 'bg-[#4A5A63]/50'
-                  }`}
+            {isRecording ? (
+              <div className="w-full text-left">
+                <label className="text-[11px] font-mono text-[#E8622C] font-bold uppercase mb-2 block">
+                  Vocal Transcript Override (STT Simulation)
+                </label>
+                <textarea
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  className="w-full h-32 px-4 py-3 bg-[#161311] border border-[#4A5A63]/60 rounded-xl text-sm font-mono text-[#EFE9D8] focus:outline-none focus:border-[#E8622C] resize-none"
+                  placeholder="Speak (or type) your defense here..."
                 />
-              ))}
-            </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-1.5 h-16 w-full max-w-md px-4">
+                {waveformBars.map((height, idx) => (
+                  <span
+                    key={idx}
+                    style={{ height: `${height}px` }}
+                    className={`w-2 rounded-full transition-all duration-150 ${
+                      phaseCSolved ? 'bg-emerald-400/70' : 'bg-[#4A5A63]/50'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Timer & Status */}
             <div className="flex items-center gap-3 font-mono">
@@ -656,7 +719,7 @@ export const CrucibleWorkflow: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#4A5A63]/50 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#F2B705] text-[#211D1B] flex items-center justify-center font-bold font-mono">
-                âœ“
+                OK
               </div>
               <div>
                 <span className="text-xs font-mono text-[#F2B705] uppercase tracking-wider font-semibold">
@@ -682,7 +745,7 @@ export const CrucibleWorkflow: React.FC = () => {
 
           <div className="pt-4 border-t border-[#4A5A63]/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
             <span className="text-[#EFE9D8]/60">
-              Verified Candidate Signature Â· Ready for Tier-1 Campus Placement Drives
+              Verified Candidate Signature - Ready for Tier-1 Campus Placement Drives
             </span>
             <span className="text-[#E8622C] font-semibold">
               Placement Readiness +3% Applied

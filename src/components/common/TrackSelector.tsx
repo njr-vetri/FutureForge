@@ -42,7 +42,7 @@ export const TrackSelector: React.FC = () => {
             Select Your Placement Track
           </h2>
           <p className="text-sm sm:text-base text-[#1A1D1B]/75 leading-relaxed">
-            CareerOS adapts to your preparation stage. Choose your entry point below â€” you can
+            CareerOS adapts to your preparation stage. Choose your entry point below - you can
             switch between tracks anytime from the sidebar without losing skill records.
           </p>
         </div>
@@ -78,7 +78,7 @@ export const TrackSelector: React.FC = () => {
               </h3>
 
               <div className="text-xs font-mono text-[#C9962C] mb-4 uppercase tracking-wider font-semibold">
-                Expedition & Milestones
+                Roadmap & Milestones
               </div>
 
               <p className="text-sm text-[#EFE9D8]/80 leading-relaxed mb-6">
@@ -201,7 +201,7 @@ export const TrackSelector: React.FC = () => {
 
       {/* Footer */}
       <div className="max-w-6xl mx-auto w-full text-center text-xs font-mono text-[#1A1D1B]/50 py-4 border-t border-[#DCD4C0]/60">
-        CareerOS Placement Engine Â· Strict Anti-SaaS Design System Â· Built for Production Placement Readiness
+        CareerOS Placement Engine - Strict Anti-SaaS Design System - Built for Production Placement Readiness
       </div>
     </div>
   );

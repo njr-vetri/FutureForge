@@ -1,99 +1,136 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, BrainCircuit, CheckCircle2, Code2, Flame, Laptop, Target } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Flame, ArrowRight, CheckCircle2, Code2, BrainCircuit, Target, Laptop } from 'lucide-react';
+import '../crucible/crucible.css';
+
+type AssessmentData = Record<string, string[]>;
+
+const fallbackData: AssessmentData = {
+  languages: ['TypeScript', 'Python'],
+  dsa: ['Intermediate'],
+  cs_fundamentals: ['DBMS', 'Operating Systems'],
+  development: ['React', 'Node.js'],
+  target_role: ['Backend Engineer'],
+};
+
+const summaryCards = [
+  { id: 'languages', label: 'Primary Stack', fallback: 'TypeScript, Python', icon: Code2 },
+  { id: 'dsa', label: 'Algorithm Readiness', fallback: 'Intermediate', icon: BrainCircuit },
+  { id: 'development', label: 'Build Surface', fallback: 'React, Node.js', icon: Laptop },
+  { id: 'target_role', label: 'Target Path', fallback: 'Backend Engineer', icon: Target },
+];
 
 export const CrucibleResult: React.FC = () => {
-  const { setTrack, setHasCompletedAssessment } = useApp();
-  const [data, setData] = useState<Record<string, string[]>>({});
+  const { setTrack, setHasCompletedAssessment, navigate } = useApp();
+  const [data, setData] = useState<AssessmentData>(fallbackData);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('crucible_assessment_data');
     if (saved) {
       try {
-        setData(JSON.parse(saved));
-      } catch (e) {
-        // ignore
+        setData({ ...fallbackData, ...JSON.parse(saved) });
+      } catch {
+        setData(fallbackData);
       }
     }
+
+    const timer = window.setTimeout(() => setIsLoaded(true), 120);
+    return () => window.clearTimeout(timer);
   }, []);
+
+  const calibrationScore = useMemo(() => {
+    const selectedCount = Object.values(data).reduce((sum: number, values: string[]) => sum + (values?.length || 0), 0);
+    return Math.min(94, 68 + Number(selectedCount) * 4);
+  }, [data]);
+
+  const weakestSignal = useMemo(() => {
+    const dsa = data.dsa?.join(' ').toLowerCase() || '';
+    if (dsa.includes('beginner') || dsa.includes('foundation')) return 'Algorithmic depth';
+    if ((data.cs_fundamentals || []).length < 2) return 'CS fundamentals';
+    if ((data.development || []).length < 2) return 'Production project depth';
+    return 'Spoken technical defense';
+  }, [data]);
+
+  const getLabel = (id: string, fallback: string) => {
+    const values = data[id];
+    return values && values.length > 0 ? values.join(', ') : fallback;
+  };
 
   const handleEnterCrucible = () => {
     setHasCompletedAssessment(true);
     setTrack('crucible');
-  };
-
-  const getLabel = (id: string, defaultVal: string) => {
-    if (!data[id] || data[id].length === 0) return defaultVal;
-    return data[id].join(', ');
+    navigate('/crucible/workflow');
   };
 
   return (
-    <div className="min-h-screen bg-[#14231E] text-white flex flex-col items-center justify-center p-6 selection:bg-[#B8872F]/30">
-      <div className="w-full max-w-2xl relative animate-in zoom-in-95 duration-500">
-        
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-[#B8872F]/20 text-[#B8872F] rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_rgba(184,135,47,0.3)]">
-            <Flame className="w-10 h-10" />
+    <main className="crucible-screen crucible-result-screen">
+      <section className={`crucible-result-shell ${isLoaded ? 'is-loaded' : ''}`}>
+        <div className="crucible-result-hero">
+          <div className="crucible-orb" aria-hidden="true" />
+          <div className="crucible-kicker">
+            <Flame size={16} />
+            Crucible calibration complete
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">Your Profile is Ready</h1>
-          <p className="text-[#DDE4DE]/70 text-lg max-w-lg mx-auto">
-            We'll use this information to calibrate your initial Crucible challenges. Your profile will evolve dynamically as you complete live assessments.
+          <h1>Your pressure profile is ready.</h1>
+          <p>
+            CareerOS has mapped your current signal into a high-intensity workflow:
+            coding, architecture defense, and role-specific gap closure.
           </p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 mb-10 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-[#B8872F] mb-6 border-b border-white/10 pb-4">
-            <CheckCircle2 className="w-5 h-5" />
-            <h2 className="font-mono font-bold tracking-wider uppercase text-sm">Calibration Summary</h2>
+        <div className="crucible-result-grid">
+          <article className="crucible-score-card glass-panel">
+            <div className="score-ring" style={{ '--score': calibrationScore } as React.CSSProperties}>
+              <span>{calibrationScore}</span>
+              <small>/100</small>
+            </div>
+            <div>
+              <span className="metric-label">Initial Crucible Fit</span>
+              <h2>Conditional high-potential</h2>
+              <p>
+                Your foundation is strong enough for Crucible mode. The first sprint should focus on
+                {` ${weakestSignal.toLowerCase()}`} before advanced role simulation.
+              </p>
+            </div>
+          </article>
+
+          <article className="glass-panel result-insight-card">
+            <CheckCircle2 size={22} />
+            <span className="metric-label">Next unlock</span>
+            <h2>3-phase workflow</h2>
+            <p>Logic challenge, implementation, and a short hiring-manager style defense in one continuous loop.</p>
+          </article>
+        </div>
+
+        <div className="glass-panel calibration-panel">
+          <div className="panel-heading">
+            <span>Assessment Signals</span>
+            <strong>Live calibration input</strong>
           </div>
-
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-white/5 rounded-lg text-[#DDE4DE]"><Code2 className="w-5 h-5" /></div>
-              <div>
-                <div className="text-xs text-[#DDE4DE]/50 font-mono mb-1 uppercase tracking-wider">Languages</div>
-                <div className="font-semibold">{getLabel('languages', 'None Selected')}</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-white/5 rounded-lg text-[#DDE4DE]"><BrainCircuit className="w-5 h-5" /></div>
-              <div>
-                <div className="text-xs text-[#DDE4DE]/50 font-mono mb-1 uppercase tracking-wider">Algorithms & CS</div>
-                <div className="font-semibold text-sm leading-relaxed">
-                  DSA: {getLabel('dsa', 'Unknown')} <br/>
-                  Fundamentals: {getLabel('cs_fundamentals', 'None')}
+          <div className="signal-grid">
+            {summaryCards.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <div className="signal-card" key={item.id} style={{ '--delay': `${index * 90}ms` } as React.CSSProperties}>
+                  <div className="signal-icon">
+                    <Icon size={20} />
+                  </div>
+                  <div>
+                    <span>{item.label}</span>
+                    <strong>{getLabel(item.id, item.fallback)}</strong>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-white/5 rounded-lg text-[#DDE4DE]"><Laptop className="w-5 h-5" /></div>
-              <div>
-                <div className="text-xs text-[#DDE4DE]/50 font-mono mb-1 uppercase tracking-wider">Development</div>
-                <div className="font-semibold">{getLabel('development', 'None Selected')}</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="p-2 bg-white/5 rounded-lg text-[#DDE4DE]"><Target className="w-5 h-5" /></div>
-              <div>
-                <div className="text-xs text-[#DDE4DE]/50 font-mono mb-1 uppercase tracking-wider">Target Role</div>
-                <div className="font-semibold">{getLabel('target_role', 'Not Specified')}</div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        <button
-          onClick={handleEnterCrucible}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-xl bg-[#B8872F] text-[#14231E] font-bold font-mono text-lg hover:bg-white transition-all shadow-sm group"
-        >
+        <button className="crucible-primary-action" onClick={handleEnterCrucible}>
           Enter Crucible Workflow
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight size={20} />
         </button>
-
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };

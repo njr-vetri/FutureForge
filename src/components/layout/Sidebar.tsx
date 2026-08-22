@@ -11,14 +11,10 @@ import {
   Milestone,
   Briefcase,
   Trophy,
-  ShieldAlert,
   User,
   GitBranch,
-  Layers,
-  Sparkles,
-  ChevronRight,
-  Target,
   BarChart3,
+  Target,
   X,
   Lock,
   LogOut,
@@ -44,24 +40,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
     currentRoute,
     navigate,
     profile,
-    setIsSkillGraphOpen,
     logout,
   } = useApp();
 
   const isCrucible = track === 'crucible';
+  const hasCompletedTrailhead = profile.trailheadCompletedWaypoints >= profile.totalWaypoints;
 
   const trailheadLinks: SidebarLink[] = [
-    { label: 'Expedition Dashboard', route: '/dashboard', icon: Compass },
-    { label: 'Coding Arena', route: '/coding', icon: Code2 },
-    { label: 'Aptitude Matrix', route: '/aptitude', icon: BrainCircuit },
-    { label: 'AI Video Hub & Pitch', route: '/video-hub', icon: Video },
-    { label: 'Resume Studio & ATS', route: '/resume', icon: FileText },
-    { label: 'Mock Interview Room', route: '/interview', icon: MessageSquareCode },
-    { label: 'Expedition Roadmap', route: '/roadmap', icon: Milestone },
-    { label: 'Placement Board', route: '/jobs', icon: Briefcase },
-    { label: 'Batch Leaderboard', route: '/leaderboard', icon: Trophy },
-    { label: 'TPO Officer Portal', route: '/admin', icon: ShieldAlert },
-    { label: 'Candidate Profile', route: '/profile', icon: User },
+    { label: 'Dashboard', route: '/dashboard', icon: Compass },
+    { label: 'Coding Lab', route: '/coding', icon: Code2 },
+    { label: 'Aptitude Practice', route: '/aptitude', icon: BrainCircuit },
+    { label: 'Video Hub', route: '/video-hub', icon: Video },
+    { label: 'Resume & ATS', route: '/resume', icon: FileText },
+    { label: 'Interview Practice', route: '/interview', icon: MessageSquareCode },
+    { label: 'Career Roadmap', route: '/roadmap', icon: Milestone },
+    { label: 'Job Board', route: '/jobs', icon: Briefcase },
+    { label: 'Leaderboard', route: '/leaderboard', icon: Trophy },
+    { label: 'Profile', route: '/profile', icon: User },
   ];
 
   const crucibleLinks: SidebarLink[] = [
@@ -84,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
       badge: '7-DAY FIX',
     },
     {
-      label: 'Candidate Profile',
+      label: 'Profile',
       route: '/profile',
       icon: User,
     },
@@ -113,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${
           isCrucible
-            ? 'bg-[#14231E] text-[#F7F8F5] border-r border-[#DDE4DE]'
+            ? 'bg-[#161311] text-[#EFE9D8] border-r border-[#4A5A63]/50'
             : 'bg-[#14231E] text-[#F7F8F5] border-r border-[#DDE4DE]'
         }`}
       >
@@ -136,8 +131,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
             <div
               className={`p-3 rounded-xl border text-xs ${
                 isCrucible
-                  ? 'bg-[#FFFFFF] border-[#334155] text-[#F7F8F5]'
-                  : 'bg-[#DDE4DE] border-[#334155] text-[#F7F8F5]'
+                  ? 'bg-[#211D1B] border-[#B8872F]/50 text-[#F7F8F5]'
+                  : 'bg-[#1A2E28] border-[#C9962C]/40 text-[#F7F8F5]'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -169,15 +164,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
                 </button>
                 <button
                   id="sidebar-toggle-crucible"
-                  onClick={() => isCrucible ? setTrack('crucible') : null}
-                  disabled={!isCrucible}
+                  onClick={() => {
+                    setTrack('crucible');
+                    navigate('/crucible/workflow');
+                  }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-mono font-medium transition-all ${
                     isCrucible
                       ? 'bg-[#B8872F] text-[#14231E] font-bold shadow-xs'
-                      : 'bg-black/20 text-[#94A3B8]/50 cursor-not-allowed'
+                      : 'bg-black/40 text-[#94A3B8] hover:text-white'
                   }`}
                 >
-                  {!isCrucible && <Lock className="w-3 h-3" />}
                   Crucible
                 </button>
               </div>
@@ -201,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group focus:outline-none ${
                     isActive
                       ? isCrucible
-                        ? 'bg-[#B8872F] text-[#14231E] font-bold shadow-sm'
+                        ? 'bg-[#E8622C] text-[#211D1B] font-bold shadow-sm'
                         : 'bg-[#1F5E4D] text-white font-bold shadow-sm'
                       : 'text-[#94A3B8] hover:text-[#F7F8F5] hover:bg-white/5'
                   }`}
@@ -241,15 +237,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
         {/* Bottom Skill Graph & Placement Readiness Action */}
         <div className="p-4 border-t border-white/10 space-y-3">
           <button
-            id="sidebar-skill-graph-button"
+            id="sidebar-readiness-button"
             onClick={() => {
-              setIsSkillGraphOpen(true);
+              navigate('/readiness');
               onClose();
             }}
             className={`w-full flex items-center justify-between p-3 rounded-xl border text-xs font-mono transition-all ${
               isCrucible
-                ? 'bg-[#FFFFFF] border-[#334155] hover:border-[#B8872F] text-[#F7F8F5]'
-                : 'bg-[#DDE4DE] border-[#334155] hover:border-[#B8872F] text-[#F7F8F5]'
+                ? 'bg-[#211D1B] border-[#B8872F]/50 hover:border-[#B8872F] text-[#F7F8F5]'
+                : 'bg-[#1F3A34] border-[#C9962C]/50 hover:border-[#C9962C] text-[#F7F8F5]'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -259,8 +255,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = false, onClose = () =
                 }`}
               />
               <div className="text-left">
-                <div className="text-[10px] text-[#94A3B8]">SHARED MATRIX</div>
-                <div className="font-bold font-mono">Skill Graph</div>
+                <div className="text-[10px] text-[#DDE4DE]/75">MY READINESS</div>
+                <div className="font-bold font-mono">Placement Readiness</div>
               </div>
             </div>
             <span

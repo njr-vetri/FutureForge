@@ -33,20 +33,19 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
 
   // Format route breadcrumb cleanly
   const getBreadcrumb = (route: string) => {
-    if (route.startsWith('/crucible/workflow')) return 'Crucible Â· 3-Phase Live Workflow';
-    if (route.startsWith('/crucible/roast-my-repo')) return 'Crucible Â· Roast My Repo';
-    if (route.startsWith('/crucible/gap-analyzer')) return 'Crucible Â· Benchmark Gap Analyzer';
-    if (route.startsWith('/coding')) return 'Trailhead Â· Coding Arena';
-    if (route.startsWith('/aptitude')) return 'Trailhead Â· Aptitude Matrix';
-    if (route.startsWith('/video-hub')) return 'Trailhead Â· Video Hub & Pitch';
-    if (route.startsWith('/resume')) return 'Trailhead Â· Resume Studio & ATS';
-    if (route.startsWith('/interview')) return 'Trailhead Â· Mock Interview Room';
-    if (route.startsWith('/roadmap')) return 'Trailhead Â· Expedition Roadmap';
-    if (route.startsWith('/jobs')) return 'Trailhead Â· Placement Board';
-    if (route.startsWith('/leaderboard')) return 'Trailhead Â· Batch Leaderboard';
-    if (route.startsWith('/admin')) return 'Trailhead Â· TPO Officer Portal';
+    if (route.startsWith('/crucible/workflow')) return 'Crucible - 3-Phase Live Workflow';
+    if (route.startsWith('/crucible/roast-my-repo')) return 'Crucible - Roast My Repo';
+    if (route.startsWith('/crucible/gap-analyzer')) return 'Crucible - Benchmark Gap Analyzer';
+    if (route.startsWith('/coding')) return 'Trailhead - Coding Arena';
+    if (route.startsWith('/aptitude')) return 'Trailhead - Aptitude Matrix';
+    if (route.startsWith('/video-hub')) return 'Trailhead - Video Hub';
+    if (route.startsWith('/resume')) return 'Trailhead - Resume Studio';
+    if (route.startsWith('/interview')) return 'Trailhead - Mock Interview Room';
+    if (route.startsWith('/roadmap')) return 'Trailhead - Career Roadmap';
+    if (route.startsWith('/jobs')) return 'Trailhead - Jobs Portal';
+    if (route.startsWith('/leaderboard')) return 'Trailhead - Batch Leaderboard';
     if (route.startsWith('/profile')) return 'Candidate Verified Profile';
-    return 'Expedition Dashboard';
+    return 'Roadmap Dashboard';
   };
 
   return (
@@ -120,8 +119,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
             onClick={() => setIsSkillGraphOpen(true)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-xs font-mono group focus:outline-none ${
               isCrucible
-                ? 'bg-[#FFFFFF] border-[#334155] hover:border-[#B8872F]'
-                : 'bg-[#DDE4DE] border-[#334155] hover:border-[#B8872F]'
+                ? 'bg-[#211D1B] border-[#B8872F]/50 hover:border-[#B8872F] text-[#F7F8F5]'
+                : 'bg-[#1F3A34] border-[#C9962C]/50 hover:border-[#C9962C] text-[#F7F8F5]'
             }`}
             title="Open Verified Skill Graph & Readiness Matrix"
           >
@@ -131,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar }) => {
               } group-hover:rotate-45 transition-transform`}
             />
             <div className="flex items-baseline gap-1">
-              <span className="opacity-70 text-[10px] hidden sm:inline">READINESS:</span>
+              <span className="text-[#DDE4DE]/80 text-[10px] hidden sm:inline">READINESS:</span>
               <span
                 className={`font-bold ${
                   isCrucible ? 'text-[#B8872F]' : 'text-[#B8872F]'

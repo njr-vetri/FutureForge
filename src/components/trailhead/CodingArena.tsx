@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { CodingProblem } from '../../types';
 import {
@@ -16,38 +16,68 @@ import {
 } from 'lucide-react';
 
 export const CodingArena: React.FC = () => {
-  const { codingProblems, selectedProblemId, setSelectedProblemId, showToast } = useApp();
+  const { codingProblems, selectedProblemId, setSelectedProblemId, showToast, profile } = useApp();
+
+  const filteredProblems = React.useMemo(() => {
+    if (!profile.weaknesses || profile.weaknesses.length === 0) return codingProblems;
+    // Map weakness strings to problem tags loosely
+    const weakLower = profile.weaknesses.map(w => w.toLowerCase());
+    return codingProblems.filter(p => 
+      p.tags.some(tag => weakLower.includes(tag.toLowerCase()) || 
+      weakLower.some(w => w.includes(tag.toLowerCase()) || tag.toLowerCase().includes(w)))
+    );
+  }, [codingProblems, profile.weaknesses]);
+
+  const activeProblems = filteredProblems.length > 0 ? filteredProblems : codingProblems;
 
   const problem: CodingProblem =
-    codingProblems.find((p) => p.id === selectedProblemId) || codingProblems[0];
+    activeProblems.find((p) => p.id === selectedProblemId) || activeProblems[0];
 
-  const [language, setLanguage] = useState<'python' | 'cpp' | 'java' | 'javascript'>('python');
-  const [code, setCode] = useState<string>(problem.starterCode.python);
+  const [language, setLanguage] = useState<'python' | 'cpp' | 'java' | 'javascript' | 'sqlite3'>('python');
+  const [code, setCode] = useState<string>("");
+  const [customInput, setCustomInput] = useState<string>(problem.testCases[0]?.input || '');
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [testOutput, setTestOutput] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'description' | 'solution' | 'submissions'>('description');
 
   const handleSelectProblem = (p: CodingProblem) => {
     setSelectedProblemId(p.id);
-    setCode(p.starterCode[language]);
+    setCode("");
+    setCustomInput(p.testCases[0]?.input || '');
     setTestOutput(null);
   };
 
-  const handleLanguageChange = (lang: 'python' | 'cpp' | 'java' | 'javascript') => {
+  const handleLanguageChange = (lang: 'python' | 'cpp' | 'java' | 'javascript' | 'sqlite3') => {
     setLanguage(lang);
-    setCode(problem.starterCode[lang]);
+    setCode("");
   };
 
-  const handleRunCode = () => {
+  const handleRunCode = async () => {
     setIsRunning(true);
     setTestOutput(null);
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/coding/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: '11111111-1111-1111-1111-111111111111',
+          problemId: problem.id,
+          language,
+          code,
+          input: customInput,
+        }),
+      });
+      const result = await response.json();
       setIsRunning(false);
       setTestOutput(
-        `[TRAILHEAD TEST HARNESS]\nâœ“ Test 1: Input: ${problem.testCases[0]?.input} -> Output: ${problem.testCases[0]?.expected} (PASS)\nâœ“ Test 2: Input: ${problem.testCases[1]?.input || 'k=2'} -> (PASS)\nâœ“ Test 3: Input: ${problem.testCases[2]?.input || 'n=1000'} -> (PASS)\n\nAll test suites successfully passed. Complexity validated.`
+        `[LLM CODE RUNNER]\nVerdict: ${result.verdict}\nRuntime: ${result.runtimeMs}ms\nSandbox: ${result.sandbox || 'Mentron LLM Simulator'}\n\nNORMALIZED STDIN:\n${result.stdin || customInput || '(empty)'}\n\nSTDOUT:\n${result.stdout || '(empty)'}\n\nSTDERR:\n${result.stderr || '(empty)'}`
       );
-      showToast('All Test Cases Passed! Complexity target met.');
-    }, 1200);
+      showToast(result.verdict === 'PASS' ? 'Code executed successfully on Piston.' : 'Code executed with errors. Check stderr.');
+    } catch (error) {
+      setIsRunning(false);
+      setTestOutput(`[LLM CODE RUNNER]\nVerdict: EXTERNAL_UNAVAILABLE\n\n${error instanceof Error ? error.message : 'Unable to reach backend.'}`);
+      showToast('Compiler service unavailable. Start the backend and try again.');
+    }
   };
 
   return (
@@ -75,17 +105,18 @@ export const CodingArena: React.FC = () => {
           <select
             value={problem.id}
             onChange={(e) => {
-              const found = codingProblems.find((p) => p.id === e.target.value);
+              const found = activeProblems.find((p) => p.id === e.target.value);
               if (found) handleSelectProblem(found);
             }}
             className="bg-white border border-[#DCD4C0] rounded-lg px-3 py-1.5 text-xs font-mono text-[#1F3A34] font-semibold focus:outline-none focus:border-[#1F3A34]"
           >
-            {codingProblems.map((p) => (
+            {activeProblems.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.title} ({p.difficulty})
               </option>
             ))}
           </select>
+
         </div>
       </div>
 
@@ -165,7 +196,7 @@ export const CodingArena: React.FC = () => {
                 </span>
                 <ul className="space-y-1 font-mono text-[11px] text-[#1A1D1B]/75">
                   {problem.constraints.map((c, idx) => (
-                    <li key={idx}>â€¢ {c}</li>
+                    <li key={idx}>- {c}</li>
                   ))}
                 </ul>
               </div>
@@ -189,7 +220,7 @@ export const CodingArena: React.FC = () => {
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#162B26] border-b border-[#2A4D45] text-xs font-mono">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#C9962C]" />
-                <span className="font-semibold">solution.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language === 'java' ? 'java' : 'js'}</span>
+                <span className="font-semibold">solution.{language === 'python' ? 'py' : language === 'cpp' ? 'cpp' : language === 'java' ? 'java' : language === 'sqlite3' ? 'sql' : 'js'}</span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -203,6 +234,7 @@ export const CodingArena: React.FC = () => {
                   <option value="cpp">C++ 20</option>
                   <option value="java">Java 21</option>
                   <option value="javascript">JavaScript</option>
+                  <option value="sqlite3">SQLite 3</option>
                 </select>
               </div>
             </div>
@@ -217,10 +249,23 @@ export const CodingArena: React.FC = () => {
               spellCheck={false}
             />
 
+            <div className="px-4 pb-4 bg-[#1F3A34]">
+              <label className="block text-[10px] font-mono text-[#C9962C] font-bold mb-2">
+                CUSTOM STDIN
+              </label>
+              <textarea
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                rows={4}
+                className="w-full rounded-xl bg-[#162B26] border border-[#2A4D45] p-3 font-mono text-xs text-[#EFE9D8] focus:outline-none focus:border-[#C9962C] resize-y"
+                spellCheck={false}
+              />
+            </div>
+
             {/* Editor Action Bottom Bar */}
             <div className="flex items-center justify-between p-4 bg-[#162B26] border-t border-[#2A4D45]">
               <button
-                onClick={() => setCode(problem.starterCode[language])}
+                onClick={() => setCode("")}
                 className="text-xs font-mono text-[#EFE9D8]/60 hover:text-[#EFE9D8] flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -236,7 +281,7 @@ export const CodingArena: React.FC = () => {
                 {isRunning ? (
                   <>
                     <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    <span>Executing Tests...</span>
+                    <span>Running on LLM...</span>
                   </>
                 ) : (
                   <>

@@ -49,7 +49,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentRoute, setCurrentRoute] = useState<string>('/dashboard');
   const [profile, setProfile] = useState<CandidateProfile>(initialCandidateProfile);
   const [waypoints, setWaypoints] = useState<Waypoint[]>(trailheadWaypoints);
-  const [codingProblems] = useState<CodingProblem[]>(mockCodingProblems);
+  const [codingProblems, setCodingProblems] = useState<CodingProblem[]>(mockCodingProblems);
   const [selectedProblemId, setSelectedProblemId] = useState<string>('p-101');
   const [jobs, setJobs] = useState<JobOpening[]>(mockJobOpenings);
   const [isSkillGraphOpen, setIsSkillGraphOpen] = useState<boolean>(false);
@@ -58,6 +58,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState<boolean>(false);
+
+  // Initialize profile from localStorage if exists
+  useEffect(() => {
+    const storedProfile = localStorage.getItem('futureforge_profile');
+    if (storedProfile) {
+      try {
+        setProfile(JSON.parse(storedProfile));
+      } catch (e) {}
+    }
+  }, []);
+
+  // Save profile to localStorage whenever it changes
+  useEffect(() => {
+    if (profile !== initialCandidateProfile) {
+      localStorage.setItem('futureforge_profile', JSON.stringify(profile));
+    }
+  }, [profile]);
 
   // Initialize auth and track from localStorage
   useEffect(() => {
@@ -113,6 +130,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  useEffect(() => {
+    fetch('/api/coding/problems')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => {
+        if (body?.problems?.length) {
+          setCodingProblems(body.problems);
+          setSelectedProblemId(body.problems[0].id);
+        }
+      })
+      .catch(() => {
+        // Keep seeded local problems when the backend is not running.
+      });
+  }, []);
+
   // Sync hash routing if present
   useEffect(() => {
     const handleHashChange = () => {
@@ -159,9 +190,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const login = (email: string, name: string) => {
-    const user: AuthUser = { id: 'u1', email, name };
+    const user: AuthUser = { id: '11111111-1111-1111-1111-111111111111', email, name };
     setAuthUser(user);
     setIsAuthenticated(true);
+    setProfile((prev) => ({
+      ...prev,
+      name: name || '',
+      avatar: name ? name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() : '',
+      email,
+    }));
     localStorage.setItem('futureforge_auth', JSON.stringify(user));
     navigate('/track-selection');
   };

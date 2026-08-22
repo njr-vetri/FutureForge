@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { TopographicTrail } from '../common/TopographicTrail';
 import {
@@ -16,6 +16,7 @@ import {
   Briefcase,
   Target,
 } from 'lucide-react';
+import { TrailheadOnboarding } from './TrailheadOnboarding';
 
 export const TrailheadDashboard: React.FC = () => {
   const { profile, waypoints, navigate, setTrack, showToast } = useApp();
@@ -26,24 +27,33 @@ export const TrailheadDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#EFE9D8] text-[#1A1D1B] p-4 sm:p-6 lg:p-8 space-y-8 selection:bg-[#C9962C]/30">
+      <TrailheadOnboarding />
+      
       {/* Top Welcome & Notification Bar */}
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono bg-[#1F3A34] text-[#C9962C] font-semibold">
               <Compass className="w-3.5 h-3.5" />
-              TRAILHEAD Â· EXPEDITION DASHBOARD
+              TRAILHEAD - EXPEDITION DASHBOARD
             </span>
             <span className="text-xs font-mono text-[#1A1D1B]/60">
-              SESSION ACTIVE Â· 14-DAY STREAK
+              SESSION ACTIVE - 14-DAY STREAK
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-display font-bold tracking-tight text-[#1A1D1B]">
-            Welcome back, {profile.name}
+            Welcome back, {profile.name || 'Explorer'}
           </h1>
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/readiness')}
+            className="px-4 py-2 rounded-xl bg-[#C9962C] text-[#1A1D1B] border border-[#B58422] font-mono text-xs font-bold shadow-sm flex items-center gap-2"
+          >
+            <Target className="w-4 h-4" />
+            <span>Readiness {profile.readinessScore}%</span>
+          </button>
           <button
             id="dashboard-switch-crucible-btn"
             onClick={() => {
@@ -73,7 +83,7 @@ export const TrailheadDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left: Active Module Queue (8 Cols) */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Active Expedition Priority Card */}
+          {/* Active Roadmap Priority Card */}
           <div className="rounded-2xl bg-[#FAF8F2] border border-[#DCD4C0] p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-[#DCD4C0] pb-3">
               <div className="flex items-center gap-2">
@@ -88,10 +98,14 @@ export const TrailheadDashboard: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-xl font-display font-bold text-[#1F3A34]">
-                  Monotonic Deque & Sliding Window Drills
+                  {profile.weaknesses && profile.weaknesses.length > 0
+                    ? `Module 2: ${profile.weaknesses[0]} Mastery`
+                    : 'Monotonic Deque & Sliding Window Drills'}
                 </h3>
                 <p className="text-xs text-[#1A1D1B]/75 mt-1 max-w-xl">
-                  Required for Waypoint 4 sign-off before unlocking the Crucible Gate. Solve the maximum sliding window problem with linear time guarantees.
+                  {profile.weaknesses && profile.weaknesses.length > 0
+                    ? `Required for Waypoint 4 sign-off. Conquer advanced challenges in ${profile.weaknesses[0]} to unlock the Crucible Gate and prepare for ${profile.targetRoles?.[0] || 'your dream role'}.`
+                    : 'Required for Waypoint 4 sign-off before unlocking the Crucible Gate. Solve the maximum sliding window problem with linear time guarantees.'}
                 </p>
               </div>
 
@@ -183,7 +197,7 @@ export const TrailheadDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Placement Board */}
+            {/* Jobs Portal */}
             <div
               onClick={() => handleQuickAction('/jobs')}
               className="p-5 rounded-2xl bg-[#FAF8F2] border border-[#DCD4C0] hover:border-[#1F3A34] transition-all cursor-pointer shadow-xs group flex flex-col justify-between"
@@ -196,7 +210,7 @@ export const TrailheadDashboard: React.FC = () => {
                   <span className="text-xs font-mono text-emerald-700 font-bold">4 Active Drives</span>
                 </div>
                 <h4 className="text-lg font-display font-bold text-[#1A1D1B] group-hover:text-emerald-700">
-                  Placement Board
+                  Jobs Portal
                 </h4>
                 <p className="text-xs text-[#1A1D1B]/70 mt-1">
                   Live campus recruiting drives with candidate skill match scores and application tracker.
@@ -269,7 +283,7 @@ export const TrailheadDashboard: React.FC = () => {
               onClick={() => navigate('/roadmap')}
               className="w-full py-2 rounded-xl bg-[#EFE9D8] text-[#1F3A34] border border-[#DCD4C0] hover:bg-white text-xs font-mono font-bold transition-colors"
             >
-              View Full Expedition Roadmap
+              View Full Career Roadmap
             </button>
           </div>
 
@@ -284,7 +298,7 @@ export const TrailheadDashboard: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">Alien Dictionary Graph Traversal</span>
-                  <p className="text-[11px] text-[#1A1D1B]/60 font-mono">Passed 14/14 test cases Â· 2 hrs ago</p>
+                  <p className="text-[11px] text-[#1A1D1B]/60 font-mono">Passed 14/14 test cases - 2 hrs ago</p>
                 </div>
               </div>
 
@@ -292,7 +306,7 @@ export const TrailheadDashboard: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">TCS / Infosys National Mock</span>
-                  <p className="text-[11px] text-[#1A1D1B]/60 font-mono">Scored 94% Â· 98th Percentile</p>
+                  <p className="text-[11px] text-[#1A1D1B]/60 font-mono">Scored 94% - 98th Percentile</p>
                 </div>
               </div>
 

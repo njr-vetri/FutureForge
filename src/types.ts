@@ -38,6 +38,12 @@ export interface CandidateProfile {
   totalWaypoints: number;
   crucibleBadges: string[];
   currentStreakDays: number;
+  
+  // Onboarding & Dynamic Career Path
+  hasCompletedOnboarding?: boolean;
+  weaknesses?: string[];
+  strongLanguages?: string[];
+  strongFrameworks?: string[];
 }
 
 export interface Waypoint {
@@ -106,7 +112,7 @@ export interface JobOpening {
   requiredSkills: string[];
   matchedSkills: string[];
   missingSkills: string[];
-  status: 'Not Applied' | 'Applied' | 'Under Review' | 'Shortlisted' | 'Offer';
+  status: 'Not Applied' | 'Applied' | 'Under Review' | 'Shortlisted' | 'Offer' | 'Approved';
 }
 
 export interface CrucibleWorkflowState {

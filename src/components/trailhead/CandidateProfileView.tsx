@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
+import { CandidateProfile, SkillScore } from '../../types';
 import {
   User,
   ShieldCheck,
@@ -36,11 +37,15 @@ export const CandidateProfileView: React.FC = () => {
     degree: profile.degree || '',
     department: profile.branch, // Map branch to department
     gradYear: profile.batch, // Map batch to gradYear
+    cgpa: String(profile.cgpa || ''),
     bio: profile.bio || '',
     github: profile.github || '',
     linkedin: profile.linkedin || '',
     portfolio: profile.portfolio || '',
     targetRole: profile.targetRoles[0] || '',
+    weaknesses: profile.weaknesses?.join(', ') || '',
+    strongLanguages: profile.strongLanguages?.join(', ') || '',
+    strongFrameworks: profile.strongFrameworks?.join(', ') || '',
   });
 
   // Check completion
@@ -53,6 +58,7 @@ export const CandidateProfileView: React.FC = () => {
     { key: 'degree', label: 'Degree', val: profile.degree },
     { key: 'department', label: 'Department', val: profile.branch },
     { key: 'gradYear', label: 'Graduation Year', val: profile.batch },
+    { key: 'cgpa', label: 'CGPA', val: profile.cgpa ? String(profile.cgpa) : '' },
     { key: 'bio', label: 'Bio', val: profile.bio },
     { key: 'targetRole', label: 'Target Role', val: profile.targetRoles[0] },
     { key: 'github', label: 'GitHub Profile', val: profile.github },
@@ -64,6 +70,81 @@ export const CandidateProfileView: React.FC = () => {
   const completionPercentage = Math.round((completedCount / completionFields.length) * 100);
   const missingFields = completionFields.filter(f => !f.val || f.val.length === 0);
 
+  const buildUpdatedProfile = (prev: CandidateProfile): CandidateProfile => {
+    const strongLanguages = formData.strongLanguages.split(',').map(s => s.trim()).filter(Boolean);
+    const strongFrameworks = formData.strongFrameworks.split(',').map(s => s.trim()).filter(Boolean);
+    const weaknesses = formData.weaknesses.split(',').map(s => s.trim()).filter(Boolean);
+    const updatedBase: CandidateProfile = {
+      ...prev,
+      name: formData.name,
+      avatar: formData.avatar,
+      phone: formData.phone,
+      location: formData.location,
+      college: formData.college,
+      degree: formData.degree,
+      branch: formData.department,
+      batch: formData.gradYear,
+      cgpa: Math.max(0, Math.min(10, Number(formData.cgpa) || 0)),
+      bio: formData.bio,
+      github: formData.github,
+      linkedin: formData.linkedin,
+      portfolio: formData.portfolio,
+      targetRoles: formData.targetRole ? [formData.targetRole] : prev.targetRoles,
+      weaknesses,
+      strongLanguages,
+      strongFrameworks,
+    };
+
+    const nextFields = [
+      updatedBase.name,
+      updatedBase.avatar,
+      updatedBase.phone,
+      updatedBase.location,
+      updatedBase.college,
+      updatedBase.degree,
+      updatedBase.branch,
+      updatedBase.batch,
+      updatedBase.cgpa ? String(updatedBase.cgpa) : '',
+      updatedBase.bio,
+      updatedBase.targetRoles[0],
+      updatedBase.github,
+      updatedBase.linkedin,
+      updatedBase.portfolio,
+    ];
+    const nextCompletion = Math.round((nextFields.filter(Boolean).length / nextFields.length) * 100);
+    const communicationScore = Math.min(88, 30 + Math.round(nextCompletion * 0.45));
+    const projectsScore = Math.min(86, 24 + Math.round(nextCompletion * 0.35) + (updatedBase.github ? 6 : 0) + (updatedBase.portfolio ? 6 : 0));
+    const systemDesignScore = Math.min(82, 28 + strongFrameworks.length * 6 + (updatedBase.targetRoles[0] ? 8 : 0));
+    const algorithmsScore = Math.min(80, 30 + strongLanguages.length * 5);
+    const aptitudeScore = Math.min(82, 34 + (updatedBase.college ? 8 : 0) + (updatedBase.batch ? 6 : 0) + (updatedBase.cgpa ? Math.round(updatedBase.cgpa * 2) : 0));
+
+    const graphUpdates: SkillScore[] = [
+      { name: 'Profile Completeness', category: 'Communication', score: communicationScore, target: 75, level: communicationScore >= 75 ? 'Proficient' : 'Competent' },
+      { name: 'Portfolio Evidence', category: 'Projects', score: projectsScore, target: 72, level: projectsScore >= 72 ? 'Proficient' : 'Competent' },
+      { name: 'Framework Confidence', category: 'System Design', score: systemDesignScore, target: 70, level: systemDesignScore >= 70 ? 'Proficient' : 'Competent' },
+      { name: 'Language Foundation', category: 'Algorithms', score: algorithmsScore, target: 70, level: algorithmsScore >= 70 ? 'Proficient' : 'Competent' },
+      { name: 'Academic Baseline', category: 'Aptitude', score: aptitudeScore, target: 68, level: aptitudeScore >= 68 ? 'Proficient' : 'Competent' },
+    ];
+
+    const nextSkills = [...(prev.skills || [])];
+    graphUpdates.forEach((skill) => {
+      const index = nextSkills.findIndex((existing) => existing.name === skill.name);
+      if (index >= 0) nextSkills[index] = skill;
+      else nextSkills.push(skill);
+    });
+
+    const readinessFromProfile = Math.round(
+      graphUpdates.reduce((sum, skill) => sum + skill.score, 0) / graphUpdates.length
+    );
+    const nextReadiness = Math.max(prev.readinessScore, Math.min(92, Math.round(readinessFromProfile * 0.85)));
+
+    return {
+      ...updatedBase,
+      skills: nextSkills,
+      readinessScore: nextReadiness,
+    };
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -73,25 +154,10 @@ export const CandidateProfileView: React.FC = () => {
     setIsSaving(true);
     // Simulate API delay
     setTimeout(() => {
-      setProfile(prev => ({
-        ...prev,
-        name: formData.name,
-        avatar: formData.avatar,
-        phone: formData.phone,
-        location: formData.location,
-        college: formData.college,
-        degree: formData.degree,
-        branch: formData.department,
-        batch: formData.gradYear,
-        bio: formData.bio,
-        github: formData.github,
-        linkedin: formData.linkedin,
-        portfolio: formData.portfolio,
-        targetRoles: formData.targetRole ? [formData.targetRole] : prev.targetRoles,
-      }));
+      setProfile(prev => buildUpdatedProfile(prev));
       setIsSaving(false);
       setIsEditing(false);
-      showToast('Profile updated successfully.');
+      showToast('Profile updated. Skill graph recalibrated slightly.');
     }, 1200);
   };
 
@@ -213,8 +279,12 @@ export const CandidateProfileView: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-xs font-mono opacity-70 mb-1">Graduation Year</label><input type="text" name="gradYear" value={formData.gradYear} onChange={handleInputChange} className={inputClass} /></div>
-                  <div><label className="block text-xs font-mono opacity-70 mb-1">Target Role</label><input type="text" name="targetRole" value={formData.targetRole} onChange={handleInputChange} className={inputClass} /></div>
+                  <div><label className="block text-xs font-mono opacity-70 mb-1">CGPA</label><input type="number" name="cgpa" min="0" max="10" step="0.01" value={formData.cgpa} onChange={handleInputChange} className={inputClass} placeholder="8.50" /></div>
                 </div>
+                <div><label className="block text-xs font-mono opacity-70 mb-1">Target Role</label><input type="text" name="targetRole" value={formData.targetRole} onChange={handleInputChange} className={inputClass} /></div>
+                <div><label className="block text-xs font-mono opacity-70 mb-1">Weaknesses (comma separated)</label><input type="text" name="weaknesses" value={formData.weaknesses} onChange={handleInputChange} className={inputClass} /></div>
+                <div><label className="block text-xs font-mono opacity-70 mb-1">Strong Languages (comma separated)</label><input type="text" name="strongLanguages" value={formData.strongLanguages} onChange={handleInputChange} className={inputClass} /></div>
+                <div><label className="block text-xs font-mono opacity-70 mb-1">Strong Frameworks (comma separated)</label><input type="text" name="strongFrameworks" value={formData.strongFrameworks} onChange={handleInputChange} className={inputClass} /></div>
               </div>
 
               <div className="sm:col-span-2 space-y-4">
@@ -290,6 +360,41 @@ export const CandidateProfileView: React.FC = () => {
                     ))}
                   </div>
                 </div>
+                
+                {(profile.weaknesses?.length > 0 || profile.strongLanguages?.length > 0 || profile.strongFrameworks?.length > 0) && (
+                  <div className="space-y-4 pt-4 border-t border-current/10">
+                    {profile.weaknesses?.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-mono opacity-70 uppercase block">WEAKNESSES</span>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.weaknesses.map(r => (
+                            <span key={r} className={`text-xs font-mono px-2 py-0.5 rounded border ${isCrucible ? 'bg-[#211D1B] border-[#E8622C]/30 text-[#E8622C]' : 'bg-[#FAF8F2] border-[#DCD4C0] text-[#1A1D1B]'}`}>{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile.strongLanguages?.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-mono opacity-70 uppercase block">STRONG LANGUAGES</span>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.strongLanguages.map(r => (
+                            <span key={r} className={`text-xs font-mono px-2 py-0.5 rounded border ${isCrucible ? 'bg-[#211D1B] border-[#4A5A63] text-[#EFE9D8]' : 'bg-[#FAF8F2] border-[#DCD4C0] text-[#1F3A34]'}`}>{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {profile.strongFrameworks?.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs font-mono opacity-70 uppercase block">STRONG FRAMEWORKS</span>
+                        <div className="flex flex-wrap gap-2">
+                          {profile.strongFrameworks.map(r => (
+                            <span key={r} className={`text-xs font-mono px-2 py-0.5 rounded border ${isCrucible ? 'bg-[#211D1B] border-[#4A5A63] text-[#EFE9D8]' : 'bg-[#FAF8F2] border-[#DCD4C0] text-[#1F3A34]'}`}>{r}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-3">
                   <span className="text-xs font-mono opacity-70 uppercase block">VERIFIED BADGES</span>

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CareerOS Owner Approval Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #efe9d8;
+        --panel: #faf8f2;
+        --ink: #1a1d1b;
+        --muted: #66736d;
+        --line: #dcd4c0;
+        --green: #1f3a34;
+        --gold: #c9962c;
+        --ok: #047857;
+        --warn: #b45309;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      main {
+        width: min(960px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 18px;
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(24px, 4vw, 36px);
+        line-height: 1.05;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--green);
+        padding: 8px 12px;
+        font: 700 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: nowrap;
+      }
+
+      .icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        background: var(--green);
+        color: var(--gold);
+        font-size: 20px;
+        font-weight: 900;
+        border: 1px solid #162b26;
+      }
+
+      .demo-note {
+        border: 1px solid rgba(201, 150, 44, 0.45);
+        background: rgba(201, 150, 44, 0.12);
+        border-radius: 14px;
+        padding: 14px 16px;
+        color: #4b3a14;
+        margin-bottom: 18px;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 1px 2px rgba(26, 29, 27, 0.05);
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+      }
+
+      .role {
+        margin: 4px 0 6px;
+        font-size: 18px;
+        font-weight: 800;
+      }
+
+      .meta {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .status {
+        border-radius: 999px;
+        padding: 6px 10px;
+        font: 800 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: nowrap;
+      }
+
+      .under-review {
+        color: var(--warn);
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+      }
+
+      .approved {
+        color: var(--ok);
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+      }
+
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 13px;
+      }
+
+      .approve {
+        background: var(--green);
+        color: var(--bg);
+      }
+
+      .reset {
+        background: #fff;
+        color: var(--green);
+        border: 1px solid var(--line);
+      }
+
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 32px 16px;
+      }
+
+      @media (max-width: 640px) {
+        header,
+        .row,
+        .actions {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .badge,
+        .status {
+          width: fit-content;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <span class="badge"><span class="icon">✓</span> OWNER APPROVAL</span>
+          <h1>Applications Review</h1>
+        </div>
+      </header>
+
+      <section class="demo-note">
+        Demo note: this separate page is only to show the approval idea. In the real portal, students apply from the job board, the owner reviews here, and only approved applications become visible as approved in the student portal.
+      </section>
+
+      <section id="applications" class="grid"></section>
+    </main>
+
+    <script>
+      const STORAGE_KEY = "careeros_owner_demo_applications";
+
+      const seedApplications = [
+        {
+          id: "job-1",
+          candidate: "Demo Candidate",
+          email: "candidate@example.com",
+          company: "Stripe",
+          role: "Software Engineer, Core Infrastructure",
+          deadline: "In 3 Days",
+          status: "Under Review",
+        },
+        {
+          id: "job-4",
+          candidate: "Demo Candidate",
+          email: "candidate@example.com",
+          company: "Atlassian",
+          role: "Associate Software Engineer",
+          deadline: "In 12 Days",
+          status: "Under Review",
+        },
+      ];
+
+      function loadApplications() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(seedApplications));
+          return seedApplications;
+        }
+        try {
+          return JSON.parse(stored);
+        } catch {
+          return seedApplications;
+        }
+      }
+
+      function saveApplications(applications) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(applications));
+      }
+
+      function render() {
+        const mount = document.getElementById("applications");
+        const applications = loadApplications();
+
+        if (!applications.length) {
+          mount.innerHTML = '<div class="card empty">No applications yet.</div>';
+          return;
+        }
+
+        mount.innerHTML = applications.map((app) => `
+          <article class="card">
+            <div class="row">
+              <div>
+                <div class="meta">${app.company} · Deadline: ${app.deadline}</div>
+                <div class="role">${app.role}</div>
+                <div class="meta">${app.candidate} · ${app.email}</div>
+              </div>
+              <span class="status ${app.status === "Approved" ? "approved" : "under-review"}">${app.status.toUpperCase()}</span>
+            </div>
+            <div class="actions">
+              <button class="reset" onclick="markStatus('${app.id}', 'Under Review')">Keep Under Review</button>
+              <button class="approve" onclick="markStatus('${app.id}', 'Approved')">Approve</button>
+            </div>
+          </article>
+        `).join("");
+      }
+
+      function markStatus(id, status) {
+        const applications = loadApplications().map((app) =>
+          app.id === id ? { ...app, status } : app
+        );
+        saveApplications(applications);
+
+        const portalStatuses = JSON.parse(localStorage.getItem("careeros_job_statuses") || "{}");
+        portalStatuses[id] = status;
+        localStorage.setItem("careeros_job_statuses", JSON.stringify(portalStatuses));
+
+        render();
+      }
+
+      render();
+    </script>
+  </body>
+</html>

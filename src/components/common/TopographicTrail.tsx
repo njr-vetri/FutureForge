@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Waypoint } from '../../types';
 import { Compass, CheckCircle2, Lock, ArrowUpRight, Flame, MapPin } from 'lucide-react';
@@ -14,8 +14,28 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
   readinessScore,
   onSelectWaypoint,
 }) => {
-  const { navigate } = useApp();
-  const [selectedPin, setSelectedPin] = useState<Waypoint | null>(waypoints[3]);
+  const { navigate, profile } = useApp();
+
+  const dynamicWaypoints = waypoints.map((wp, i) => {
+    let derivedStatus: 'locked' | 'completed' | 'in-progress' = 'locked';
+    if (i < profile.trailheadCompletedWaypoints) {
+      derivedStatus = 'completed';
+    } else if (i === profile.trailheadCompletedWaypoints) {
+      derivedStatus = 'in-progress';
+    }
+    return { ...wp, status: derivedStatus };
+  });
+
+  const firstActiveWaypoint = dynamicWaypoints.find((wp) => wp.status === 'in-progress') || dynamicWaypoints[0];
+  const [selectedPin, setSelectedPin] = useState<Waypoint | null>(firstActiveWaypoint);
+  const completedCount = profile.trailheadCompletedWaypoints;
+  const nextWaypoint = firstActiveWaypoint || dynamicWaypoints.find((wp) => wp.status === 'locked') || dynamicWaypoints[dynamicWaypoints.length - 1];
+  const initials = (profile.name || profile.email || 'You')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'Y';
 
   // Compute avatar marker location along the smooth path based on readiness score (0 - 100)
   // Waypoint x percentages: 10, 26, 44, 62, 80, 94
@@ -32,6 +52,15 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
 
   // SVG path connecting waypoints smoothly
   const pathD = `M 10 65 C 18 45, 20 35, 26 35 C 34 35, 38 55, 44 55 C 52 55, 54 25, 62 25 C 70 25, 74 48, 80 48 C 86 48, 90 25, 94 20`;
+
+  const pathRef = useRef<SVGPathElement>(null);
+  const [pathLength, setPathLength] = useState(0);
+
+  useEffect(() => {
+    if (pathRef.current) {
+      setPathLength(pathRef.current.getTotalLength());
+    }
+  }, []);
 
   return (
     <div className="relative w-full rounded-2xl bg-[#1F3A34] text-[#EFE9D8] p-6 lg:p-8 overflow-hidden shadow-sm border border-[#2A4D45]">
@@ -85,7 +114,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
               EXPEDITION ROUTE
             </span>
             <span className="text-xs text-[#EFE9D8]/70 font-mono">
-              ELEVATION: MILESTONE 4 OF 6
+              START-TO-PLACEMENT PATH
             </span>
           </div>
           <h2 className="text-2xl lg:text-3xl font-display font-bold tracking-tight text-[#EFE9D8]">
@@ -100,10 +129,32 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
           </div>
           <div className="w-px h-8 bg-[#2A4D45]" />
           <div>
-            <div className="text-xs text-[#EFE9D8]/60 font-mono">NEXT SUMMIT GATE</div>
-            <div className="text-sm font-semibold text-[#EFE9D8]">Crucible Assessment</div>
+            <div className="text-xs text-[#EFE9D8]/60 font-mono">
+              PROGRESS
+            </div>
+            <div className="text-sm font-semibold text-[#EFE9D8]">
+              {completedCount}/{waypoints.length} milestones
+            </div>
           </div>
         </div>
+      </div>
+
+      <div className="relative z-10 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl bg-[#162B26] border border-[#2A4D45] px-4 py-3">
+        <div>
+          <div className="text-[10px] font-mono text-[#C9962C] uppercase tracking-wider font-semibold">
+            Start Here
+          </div>
+          <div className="text-sm font-semibold text-[#EFE9D8]">
+            {nextWaypoint?.title || 'Create your first milestone'}
+          </div>
+        </div>
+        <button
+          onClick={() => selectedPin && navigate(routeForWaypoint(selectedPin))}
+          className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-[#C9962C] text-[#1A1D1B] font-medium text-xs hover:bg-[#B58422] transition-colors focus:ring-2 focus:ring-[#C9962C] focus:outline-none"
+        >
+          <span>Continue Path</span>
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Main Interactive Trail Stage */}
@@ -124,13 +175,14 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
 
           {/* Completed Segment of Trail */}
           <path
+            ref={pathRef}
             d={pathD}
             fill="none"
             stroke="#C9962C"
             strokeWidth="2.5"
             strokeLinecap="round"
-            strokeDasharray="100 100"
-            strokeDashoffset={100 - readinessScore}
+            strokeDasharray={`${pathLength} ${pathLength}`}
+            strokeDashoffset={pathLength - (pathLength * (Math.max(0, Math.min(100, readinessScore)) / 100))}
             className="transition-all duration-1000 ease-out"
           />
 
@@ -146,7 +198,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
         </svg>
 
         {/* Waypoint Pins */}
-        {waypoints.map((wp) => {
+        {dynamicWaypoints.map((wp) => {
           const isCompleted = wp.status === 'completed';
           const isInProgress = wp.status === 'in-progress';
           const isSelected = selectedPin?.id === wp.id;
@@ -221,7 +273,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
                     : 'bg-[#1F3A34]/90 text-[#EFE9D8]/80 border-[#2A4D45] group-hover:text-[#EFE9D8]'
                 }`}
               >
-                {wp.title.split(' ')[0]} {wp.score > 0 ? `Â· ${wp.score}%` : ''}
+                {wp.title.split(' ')[0]} {wp.score > 0 ? `- ${wp.score}%` : ''}
               </span>
             </button>
           );
@@ -245,7 +297,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
             <div className="w-2 h-2 bg-[#C9962C] rotate-45 mx-auto -mt-1" />
           </div>
           <div className="w-7 h-7 rounded-full bg-[#EFE9D8] border-2 border-[#C9962C] shadow-sm flex items-center justify-center font-bold text-xs text-[#1F3A34]">
-            AS
+            {initials}
           </div>
         </div>
       </div>
@@ -256,7 +308,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-[#C9962C] uppercase tracking-wider font-semibold">
-                Waypoint {selectedPin.number} Â· {selectedPin.category}
+                Waypoint {selectedPin.number} - {selectedPin.category}
               </span>
               <span
                 className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
@@ -291,17 +343,7 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
             <button
               id={`launch-waypoint-${selectedPin.id}`}
               onClick={() => {
-                if (selectedPin.number === 1 || selectedPin.number === 2) {
-                  navigate('/coding');
-                } else if (selectedPin.number === 3) {
-                  navigate('/aptitude');
-                } else if (selectedPin.number === 4) {
-                  navigate('/resume');
-                } else if (selectedPin.number === 5) {
-                  navigate('/crucible/workflow');
-                } else {
-                  navigate('/interview');
-                }
+                navigate(routeForWaypoint(selectedPin));
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#C9962C] text-[#1A1D1B] font-medium text-xs hover:bg-[#B58422] transition-colors focus:ring-2 focus:ring-[#C9962C] focus:outline-none"
             >
@@ -314,4 +356,16 @@ export const TopographicTrail: React.FC<TopographicTrailProps> = ({
     </div>
   );
 };
+
+function routeForWaypoint(waypoint: Waypoint) {
+  const firstTaskType = waypoint.tasks[0]?.type;
+  if (waypoint.number === 1) return '/profile';
+  if (waypoint.number === 6) return '/jobs';
+  if (firstTaskType === 'coding') return '/coding';
+  if (firstTaskType === 'aptitude') return '/aptitude';
+  if (firstTaskType === 'resume') return '/resume';
+  if (firstTaskType === 'interview') return '/interview';
+  if (firstTaskType === 'video') return '/video-hub';
+  return '/roadmap';
+}
 

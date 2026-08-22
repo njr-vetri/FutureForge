@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { mockAptitudeQuestions } from '../../data/mockData';
+import { AptitudeQuestion } from '../../types';
 import {
   BrainCircuit,
   Clock,
@@ -19,8 +20,13 @@ export const AptitudeArena: React.FC = () => {
   const [isFinished, setIsFinished] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes
   const [hasStarted, setHasStarted] = useState<boolean>(false);
+  const [questions, setQuestions] = useState<AptitudeQuestion[]>(mockAptitudeQuestions);
+  const [numQuestions, setNumQuestions] = useState<number>(10);
+  const [timerMinutes, setTimerMinutes] = useState<number>(10);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [testHistory, setTestHistory] = useState<{ date: string; score: number }[]>([]);
 
-  const questions = mockAptitudeQuestions;
   const currentQ = questions[currentIdx];
 
   useEffect(() => {
@@ -36,22 +42,60 @@ export const AptitudeArena: React.FC = () => {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isFinished]);
+  }, [isFinished, hasStarted]);
+
+
 
   const handleSelectOption = (optIdx: number) => {
     if (isFinished) return;
     setSelectedAnswers((prev) => ({ ...prev, [currentIdx]: optIdx }));
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     setIsFinished(true);
-    // calculate score
-    let correct = 0;
-    questions.forEach((q, idx) => {
-      if (selectedAnswers[idx] === q.correctIndex) correct++;
-    });
-    const pct = Math.round((correct / questions.length) * 100);
-    showToast(`Assessment Complete! Score: ${pct}% (${correct}/${questions.length} Correct)`);
+    
+    const answers = questions.map((q, idx) => ({
+      questionId: q.id,
+      selectedIndex: selectedAnswers[idx] !== undefined ? selectedAnswers[idx] : -1
+    }));
+    
+    try {
+      const response = await fetch('/api/aptitude/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: (!profile.id || profile.id === 'current-user') ? '11111111-1111-1111-1111-111111111111' : profile.id, answers })
+      });
+      const data = await response.json();
+      setTestHistory(prev => [{ date: new Date().toLocaleString(), score: data.score }, ...prev]);
+      showToast(`Assessment Complete! Score: ${data.score}% (${data.correct}/${data.total} Correct)`);
+    } catch {
+      let correct = 0;
+      questions.forEach((q, idx) => {
+        if (selectedAnswers[idx] === q.correctIndex) correct++;
+      });
+      const pct = Math.round((correct / questions.length) * 100);
+      setTestHistory(prev => [{ date: new Date().toLocaleString(), score: pct }, ...prev]);
+      showToast(`Assessment Complete! Score: ${pct}% (${correct}/${questions.length} Correct)`);
+    }
+  };
+
+  const handleStart = async () => {
+    setIsLoadingQuestions(true);
+    try {
+      const response = await fetch(`/api/aptitude/questions?count=${numQuestions}`);
+      const body = await response.json();
+      if (body?.questions?.length) {
+        setQuestions(body.questions);
+      }
+    } catch {
+      setQuestions(mockAptitudeQuestions);
+    } finally {
+      setCurrentIdx(0);
+      setSelectedAnswers({});
+      setIsLoadingQuestions(false);
+      setTimeLeft(timerMinutes * 60);
+      setHasStarted(true);
+    }
   };
 
   const formatTime = (secs: number) => {
@@ -90,19 +134,50 @@ export const AptitudeArena: React.FC = () => {
       </div>
 
       {!hasStarted ? (
-        <div className="max-w-4xl mx-auto space-y-6 flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
-          <div className="w-20 h-20 bg-[#2E6E8E]/10 text-[#2E6E8E] rounded-3xl flex items-center justify-center mb-4">
+        <div className="max-w-4xl mx-auto space-y-6 flex flex-col items-center justify-center py-12 text-center animate-in fade-in">
+          <div className="w-20 h-20 bg-[#2E6E8E]/10 text-[#2E6E8E] rounded-3xl flex items-center justify-center mb-2">
             <BrainCircuit className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-display font-bold">Ready to Begin?</h2>
-          <p className="text-[#1A1D1B]/70 max-w-md">
-            This is a 10-minute speed assessment containing {questions.length} questions. The timer will start immediately once you begin.
+          <h2 className="text-3xl font-display font-bold">Configure Your Assessment</h2>
+          
+          <div className="flex flex-col sm:flex-row gap-6 mt-4 w-full max-w-md bg-[#FAF8F2] p-6 rounded-2xl border border-[#DCD4C0]">
+            <div className="flex-1 text-left">
+              <label className="block text-xs font-mono font-bold text-[#1F3A34] mb-2">QUESTIONS</label>
+              <select
+                value={numQuestions}
+                onChange={(e) => setNumQuestions(Number(e.target.value))}
+                className="w-full bg-white border border-[#DCD4C0] rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-[#2E6E8E]"
+              >
+                <option value={5}>5 Questions</option>
+                <option value={10}>10 Questions</option>
+                <option value={15}>15 Questions</option>
+                <option value={20}>20 Questions</option>
+              </select>
+            </div>
+            <div className="flex-1 text-left">
+              <label className="block text-xs font-mono font-bold text-[#1F3A34] mb-2">TIMER (MINS)</label>
+              <select
+                value={timerMinutes}
+                onChange={(e) => setTimerMinutes(Number(e.target.value))}
+                className="w-full bg-white border border-[#DCD4C0] rounded-xl px-4 py-2.5 text-sm font-semibold focus:outline-none focus:border-[#2E6E8E]"
+              >
+                <option value={5}>5 Minutes</option>
+                <option value={10}>10 Minutes</option>
+                <option value={15}>15 Minutes</option>
+                <option value={30}>30 Minutes</option>
+              </select>
+            </div>
+          </div>
+
+          <p className="text-[#1A1D1B]/70 max-w-md text-sm mt-4">
+            The timer will start immediately once you click begin. Good luck!
           </p>
           <button
-            onClick={() => setHasStarted(true)}
-            className="mt-6 px-8 py-3 rounded-xl bg-[#1F3A34] text-[#EFE9D8] font-mono font-bold hover:bg-[#162B26] transition-colors shadow-sm text-lg"
+            onClick={handleStart}
+            disabled={isLoadingQuestions}
+            className="mt-2 px-8 py-3 rounded-xl bg-[#1F3A34] text-[#EFE9D8] font-mono font-bold hover:bg-[#162B26] transition-colors shadow-sm text-lg w-full max-w-md"
           >
-            Start Assessment
+            {isLoadingQuestions ? 'Loading...' : 'Start Assessment'}
           </button>
         </div>
       ) : !isFinished ? (
@@ -134,7 +209,7 @@ export const AptitudeArena: React.FC = () => {
           <div className="rounded-2xl bg-[#FAF8F2] border border-[#DCD4C0] p-6 sm:p-8 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-[#DCD4C0] pb-3">
               <span className="text-xs font-mono text-[#2E6E8E] font-bold uppercase tracking-wider">
-                QUESTION {currentIdx + 1} OF {questions.length} Â· {currentQ.category}
+                QUESTION {currentIdx + 1} OF {questions.length} - {currentQ.category}
               </span>
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-black/5 text-[#1A1D1B]/70">
                 {currentQ.difficulty}
@@ -213,32 +288,60 @@ export const AptitudeArena: React.FC = () => {
                 <Trophy className="w-4 h-4" />
                 <span>ASSESSMENT SUMMARY REPORT</span>
               </div>
-              <h2 className="text-3xl font-display font-bold">Percentile Rank: 94th</h2>
+              <h2 className="text-3xl font-display font-bold">Total Score: {Math.round(
+                  (Object.keys(selectedAnswers).filter(
+                    (k) => selectedAnswers[Number(k)] === questions[Number(k)].correctIndex
+                  ).length / questions.length) * 100
+                )}%</h2>
               <p className="text-xs text-[#EFE9D8]/70 mt-1 max-w-md">
-                Verified candidate score meets the national screening threshold for TCS Digital, Infosys SP, and Tier-1 Product Engineering roles.
+                You correctly answered {Object.keys(selectedAnswers).filter(
+                    (k) => selectedAnswers[Number(k)] === questions[Number(k)].correctIndex
+                  ).length} out of {questions.length} questions.
               </p>
             </div>
 
             <div className="text-center sm:text-right bg-[#162B26] p-4 rounded-xl border border-[#2A4D45]">
-              <div className="text-xs font-mono text-[#EFE9D8]/60">ACCURACY SCORE</div>
+              <div className="text-xs font-mono text-[#EFE9D8]/60">CORRECT ANSWERS</div>
               <div className="text-4xl font-bold font-mono text-[#C9962C]">
-                {Math.round(
-                  (Object.keys(selectedAnswers).filter(
+                {Object.keys(selectedAnswers).filter(
                     (k) => selectedAnswers[Number(k)] === questions[Number(k)].correctIndex
-                  ).length /
-                    questions.length) *
-                    100
-                )}%
+                  ).length} / {questions.length}
               </div>
+            </div>
+          </div>
+
+          {/* Past History */}
+          <div className="bg-[#FAF8F2] p-6 rounded-2xl border border-[#DCD4C0]">
+            <h3 className="text-xl font-display font-bold text-[#1A1D1B] mb-4">Past Test History</h3>
+            <div className="space-y-3">
+              {testHistory.length === 0 ? (
+                <div className="text-sm font-mono text-[#1A1D1B]/50 italic text-center py-4">No past tests recorded in this session.</div>
+              ) : (
+                testHistory.map((history, idx) => (
+                  <div key={idx} className={`flex justify-between items-center p-3 rounded-xl border border-[#DCD4C0] ${idx === 0 ? 'bg-white' : 'bg-white/50 border-dashed'}`}>
+                    <div className={`text-sm font-mono ${idx === 0 ? 'text-[#1A1D1B] font-bold' : 'text-[#1A1D1B]/70'}`}>{history.date}</div>
+                    <div className={`text-sm font-mono font-bold ${idx === 0 ? 'text-[#2E6E8E]' : 'text-[#1A1D1B]/70'}`}>{history.score}% Score</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
           {/* Detailed Question Review & Step-by-Step Solutions */}
           <div className="space-y-4">
-            <h3 className="text-xl font-display font-bold text-[#1A1D1B]">
-              Step-by-Step Solutions & Breakdown
-            </h3>
-            {questions.map((q, idx) => {
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-display font-bold text-[#1A1D1B]">
+                Step-by-Step Solutions
+              </h3>
+              <button 
+                onClick={() => setShowAnswers(!showAnswers)}
+                className="px-4 py-2 bg-[#2E6E8E] text-white text-xs font-mono font-bold rounded-lg hover:bg-[#205169] transition"
+              >
+                {showAnswers ? 'Hide Answers' : 'Review Answers'}
+              </button>
+            </div>
+            
+            {showAnswers && questions.map((q, idx) => {
               const userAns = selectedAnswers[idx];
               const isCorrect = userAns === q.correctIndex;
 
@@ -253,7 +356,7 @@ export const AptitudeArena: React.FC = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-mono font-bold">
-                      Q{idx + 1} Â· {q.category}
+                      Q{idx + 1} - {q.category}
                     </span>
                     <span
                       className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full ${
@@ -294,7 +397,8 @@ export const AptitudeArena: React.FC = () => {
                 setIsFinished(false);
                 setHasStarted(false);
                 setSelectedAnswers({});
-                setTimeLeft(600);
+                setShowAnswers(false);
+                setTimeLeft(timerMinutes * 60);
               }}
               className="px-6 py-2.5 rounded-xl bg-[#1F3A34] text-[#EFE9D8] text-xs font-mono font-bold hover:bg-[#162B26] transition-colors flex items-center gap-2 shadow-sm"
             >

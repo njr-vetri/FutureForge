@@ -26,10 +26,13 @@ import { CandidateProfileView } from './components/trailhead/CandidateProfileVie
 import { CrucibleWorkflow } from './components/crucible/CrucibleWorkflow';
 import { RoastMyRepo } from './components/crucible/RoastMyRepo';
 import { GapAnalyzer } from './components/crucible/GapAnalyzer';
+import { HelpCenterWidget } from './components/common/HelpCenterWidget';
 
 const MainContent: React.FC = () => {
-  const { currentRoute, track } = useApp();
+  const { currentRoute, track, profile } = useApp();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const hasCompletedTrailhead = profile?.trailheadCompletedWaypoints >= profile?.totalWaypoints;
 
   const renderRoute = () => {
     switch (currentRoute) {
@@ -71,7 +74,7 @@ const MainContent: React.FC = () => {
         return <JobsPortal />;
       case '/leaderboard':
         return <Leaderboard />;
-      case '/admin':
+      case '/readiness':
         return <AdminPortal />;
 
       // Crucible Routes
@@ -100,13 +103,18 @@ const MainContent: React.FC = () => {
         <main
           id="main-app-content"
           tabIndex={-1}
-          className="flex-1 overflow-y-auto focus:outline-none"
+          className={`flex-1 overflow-y-auto focus:outline-none ${
+            isFullScreenRoute ? 'p-0' : 'p-4 sm:p-6 lg:p-8 bg-gray-50/50'
+          }`}
         >
           {renderRoute()}
         </main>
       </div>
 
       <SkillGraphModal />
+      
+      {/* AI Tutor Widget */}
+      {!isFullScreenRoute && <HelpCenterWidget />}
     </div>
   );
 };

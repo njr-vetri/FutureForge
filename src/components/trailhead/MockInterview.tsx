@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   MessageSquareCode,
@@ -20,20 +20,41 @@ interface MockMessage {
 }
 
 export const MockInterview: React.FC = () => {
-  const { showToast } = useApp();
+  const { showToast, profile } = useApp();
   const [rolePersona, setRolePersona] = useState<'faang' | 'startup' | 'unicorn'>('faang');
-  const [messages, setMessages] = useState<MockMessage[]>([
-    {
-      id: 'im-1',
-      sender: 'ai',
-      text: "Hello Aarav. I am your Technical Bar Raiser for today's placement simulation. Let's start: You listed a distributed task queue in your profile. How did you ensure thread safety when multiple workers consume from the queue simultaneously?",
-      timestamp: '11:00 AM',
-    },
-  ]);
+  const [messages, setMessages] = useState<MockMessage[]>([]);
   const [inputText, setInputText] = useState<string>('');
   const [isThinking, setIsThinking] = useState<boolean>(false);
+  const [hasStarted, setHasStarted] = useState(false);
 
-  const handleSend = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (hasStarted) return;
+    setHasStarted(true);
+    setIsThinking(true);
+    fetch('/api/interview/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        answer: 'Hello, I am ready to start my interview.',
+        mode: rolePersona,
+        targetRole: profile?.targetRoles?.[0] || 'Software Engineer',
+        qaPairs: []
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setMessages([{
+          id: `im-${Date.now()}`,
+          sender: 'ai',
+          text: data.reply || "Let's begin. Can you introduce yourself?",
+          timestamp: 'Just now'
+        }]);
+        setIsThinking(false);
+      })
+      .catch(() => setIsThinking(false));
+  }, [hasStarted, rolePersona, profile]);
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
@@ -48,17 +69,32 @@ export const MockInterview: React.FC = () => {
     setInputText('');
     setIsThinking(true);
 
-    setTimeout(() => {
-      setIsThinking(false);
+    try {
+      const response = await fetch('/api/interview/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answer: inputText,
+          mode: rolePersona,
+          targetRole: profile?.targetRoles?.[0] || 'Software Engineer',
+          qaPairs: messages.map(m => ({ answer: m.sender === 'candidate' ? m.text : '', reply: m.sender === 'ai' ? m.text : '' })) // rudimentary map, in a real app would pair them properly
+        }),
+      });
+      const data = await response.json();
+      
       const aiReply: MockMessage = {
         id: `im-${Date.now() + 1}`,
         sender: 'ai',
-        text: 'That clarifies the worker concurrency. Now, what happens if the Redis broker restarts while tasks are in the middle of processing? How did you implement idempotency or acknowledgment?',
+        text: data.reply || 'Let me evaluate your answer.',
         timestamp: 'Just now',
       };
       setMessages((prev) => [...prev, aiReply]);
-      showToast('Interviewer cross-examined your recovery strategy.');
-    }, 1500);
+      showToast('Interviewer cross-examined your response.');
+    } catch (err) {
+      showToast('Failed to connect to interviewer AI.');
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (
